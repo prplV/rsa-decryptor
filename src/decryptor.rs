@@ -1,7 +1,6 @@
 extern crate rand; 
 extern crate rsa;
 
-use core::panic;
 use std::fs::File;
 use std::io::{Write, Read, BufReader};
 use base64::{encode, decode};
