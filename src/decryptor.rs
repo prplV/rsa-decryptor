@@ -23,6 +23,8 @@ pub trait Decryptor{
     fn read_private_key(&mut self, pk_file_name: String);
     fn read_message(&mut self, msg_file_name: String, fname: String);
     fn decrypt_and_save(&self) -> std::io::Result<()>;
+    fn test_pkcs_padding(&self, padding: &Pkcs1v15Encrypt) -> bool;
+    fn test_oaep_padding(&self, padding: Oaep, index: i8) -> bool;
 }
 
 impl Decryptor for MainStructForDecryption{
@@ -76,6 +78,7 @@ impl Decryptor for MainStructForDecryption{
         let padding_Pkcs1v15Encrypt = Pkcs1v15Encrypt;
         let padding_oaep_sha256 = Oaep::new::<Sha256>();
         let padding_oaep_sha1 = Oaep::new::<Sha1>();
+        //let tuple_padding = (padding_Pkcs1v15Encrypt, padding_oaep_sha1, padding_oaep_sha256);
         //let padding_pss = Pss::new::<Sha256>();
 
         match self.private_key.validate(){
@@ -83,10 +86,33 @@ impl Decryptor for MainStructForDecryption{
             Err(_) => {println!("\n\nUnverified\n\n")}
         }
 
-        let ini_file: Vec<u8> = self.private_key.decrypt(padding_oaep_sha1, &self.encrypted_message).unwrap();
+        //let ini_file: Vec<u8> = self.private_key.decrypt(padding_oaep_sha1, &self.encrypted_message).unwrap();
 
             //.expect("error with decrypting messasge");
 
+        let mut ini_file: Vec<u8> = Vec::new();
+
+
+        if self.test_pkcs_padding(&padding_Pkcs1v15Encrypt){
+            ini_file = self.private_key.decrypt(padding_oaep_sha1, &self.encrypted_message).unwrap();
+        }
+        else{
+            if self.test_oaep_padding(padding_oaep_sha1, 1){
+                let padding_oaep_sha1 = Oaep::new::<Sha1>();
+                ini_file = self.private_key.decrypt(padding_oaep_sha1, &self.encrypted_message).unwrap();
+            }
+            else{
+                if self.test_oaep_padding(padding_oaep_sha256, 2){
+                    let padding_oaep_sha256 = Oaep::new::<Sha256>();
+                    ini_file = self.private_key.decrypt(padding_oaep_sha256, &self.encrypted_message).unwrap();
+                }
+                else{
+                    panic!("There is no padding schemes that satisfy private key in the work directory!\nWork can't be continued");
+                }
+            }
+        }
+
+        
         // creating file and saving
         let owner = self.filename.as_str().to_owned();
         let fname = owner + ".ini";
@@ -97,4 +123,31 @@ impl Decryptor for MainStructForDecryption{
         println!("\ndecrypted message was successfully written");
         Ok(())
     }
+    fn test_pkcs_padding(&self, padding: &Pkcs1v15Encrypt) -> bool {
+        return match self.private_key.decrypt(*padding, &self.encrypted_message) {
+            Ok(_) => {
+                println!("Bin file's padding is Pkcs1v15Encrypt");
+                true
+            },
+            Err(_) => {
+                false
+            },
+        }
+    }
+    fn test_oaep_padding(&self, padding: Oaep, index: i8) -> bool {
+        return match self.private_key.decrypt(padding, &self.encrypted_message) {
+            Ok(_) => {
+                if index == 1{
+                    println!("Bin file's padding is Oaep with Sha-1 hashing");
+                }
+                else{
+                    println!("Bin file's padding is Oaep with Sha-256 hashing");
+                }
+                true
+            },
+            Err(_) => {
+                false
+            },
+        }
+    }  
 }
