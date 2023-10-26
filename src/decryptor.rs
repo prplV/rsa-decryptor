@@ -2,14 +2,13 @@ extern crate rand;
 extern crate rsa;
 
 use std::fs::File;
-use std::io::{Write, Read, BufReader};
+use std::io::{Write, Read};
 use base64::{encode, decode};
-use rsa::{Pkcs1v15Encrypt, RsaPrivateKey, Oaep, Pss};
+use rsa::{Pkcs1v15Encrypt, RsaPrivateKey, Oaep};
 use rsa::pkcs1::DecodeRsaPrivateKey;
-use rsa::signature::digest::{Digest, DynDigest};
+// use rsa::signature::digest::{Digest, DynDigest};
 use sha1::Sha1;
 use sha2::Sha256;
-// use crypto::digest::Digest;
 
 pub struct MainStructForDecryption{
     private_key: RsaPrivateKey,
@@ -47,7 +46,6 @@ impl Decryptor for MainStructForDecryption{
 
         let str = String::from_utf8(private_key_data).unwrap();
         let pk = RsaPrivateKey::from_pkcs1_pem(&str).expect("error parsing pk");
-        //println!("{:?}", pk);
         self.private_key = pk;
 
         println!("pk reading was successfully done!");
@@ -61,14 +59,8 @@ impl Decryptor for MainStructForDecryption{
         let mut msg_file  = File::open(MESSAGE).expect("msg file opening error");
         msg_file.read_to_end(&mut msg_data).expect("msg file reading error!");
 
-        //let msg_base64 = encode(msg_data);
-
-        //println!("{:?}", msg_base64);
-
         self.encrypted_message = msg_data;
         self.filename = fname;
-        //println!("msg reading was successfully done!");
-        //panic!("aiusdhpa");
     }
     // magic
     fn decrypt_and_save(&self) -> std::io::Result<()>{
@@ -78,17 +70,11 @@ impl Decryptor for MainStructForDecryption{
         let padding_Pkcs1v15Encrypt = Pkcs1v15Encrypt;
         let padding_oaep_sha256 = Oaep::new::<Sha256>();
         let padding_oaep_sha1 = Oaep::new::<Sha1>();
-        //let tuple_padding = (padding_Pkcs1v15Encrypt, padding_oaep_sha1, padding_oaep_sha256);
-        //let padding_pss = Pss::new::<Sha256>();
 
         match self.private_key.validate(){
             Ok(_) => {println!("\n\nVerified\n\n")},
             Err(_) => {println!("\n\nUnverified\n\n")}
         }
-
-        //let ini_file: Vec<u8> = self.private_key.decrypt(padding_oaep_sha1, &self.encrypted_message).unwrap();
-
-            //.expect("error with decrypting messasge");
 
         let mut ini_file: Vec<u8> = Vec::new();
 
